@@ -106,47 +106,10 @@
       <p class="section-subtitle fade-in delay-1">
         Un portfolio di appartamenti selezionati per vacanze, studio e lavoro. Apri le schede per vedere foto e dettagli.
       </p>
-      <div class="cards-grid">
-        <article class="listing-card lift-on-hover fade-in delay-1">
-          <div class="listing-badge-row">
-            <span class="badge">Centro storico</span>
-            <span class="badge badge-strong">Fino a 4 ospiti</span>
-          </div>
-          <h3>Piazza Navona Luxury</h3>
-          <p>Elegante appartamento nel cuore di Roma con 2 camere matrimoniali e soggiorno con cucina attrezzata.</p>
-          <ul class="tags">
-            <li>Wi-Fi</li>
-            <li>AC</li>
-            <li>Smart check-in</li>
-          </ul>
-        </article>
-        <article class="listing-card lift-on-hover fade-in delay-2">
-          <div class="listing-badge-row">
-            <span class="badge">Trastevere</span>
-            <span class="badge badge-strong">Fino a 6 ospiti</span>
-          </div>
-          <h3>Trastevere Loft</h3>
-          <p>Loft su due livelli con 3 camere e terrazzo privato, perfetto per famiglie e gruppi di amici.</p>
-          <ul class="tags">
-            <li>Wi-Fi</li>
-            <li>AC</li>
-            <li>Self check-in</li>
-          </ul>
-        </article>
-        <article class="listing-card lift-on-hover fade-in delay-3">
-          <div class="listing-badge-row">
-            <span class="badge">San Pietro</span>
-            <span class="badge badge-strong">Fino a 2 ospiti</span>
-          </div>
-          <h3>San Pietro Cozy</h3>
-          <p>Bilocale curato a pochi minuti dal Vaticano, ideale per viaggi di coppia o lavoro.</p>
-          <ul class="tags">
-            <li>Wi-Fi</li>
-            <li>AC</li>
-            <li>Balcone</li>
-          </ul>
-        </article>
+      <div id="featured-properties" class="cards-grid listings-grid">
+        <!-- popolato da Supabase -->
       </div>
+      <p class="note fade-in delay-3" id="featured-note"></p>
       <div class="section-cta-center fade-in delay-3">
         <a href="alloggi.html" class="btn btn-outline">Vedi tutti gli alloggi</a>
       </div>
@@ -160,5 +123,62 @@
     <p>WhatsApp: +39 334 507 1226 · Email: a.paolino0104@gmail.com</p>
   </div>
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://qmsgcpkxdkijsxyvhuog.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtc2djcGt4ZGtpanN4eXZodW9nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzMjQ1MzcsImV4cCI6MjA3ODkwMDUzN30.husS5qI2XxYqovnx3QX-EPFPca4SPWRQQo9rHM8NLEE";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function loadFeaturedProperties() {
+    const listEl = document.getElementById("featured-properties");
+    const noteEl = document.getElementById("featured-note");
+    if (!listEl) return;
+    listEl.innerHTML = "<p>Caricamento alloggi...</p>";
+
+    const { data, error } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    if (error) {
+      console.error(error);
+      listEl.innerHTML = "<p>Errore nel caricamento degli alloggi.</p>";
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      listEl.innerHTML = "<p>Nessun alloggio pubblicato al momento.</p>";
+      if (noteEl) noteEl.textContent = "Gli alloggi compariranno qui non appena saranno pubblicati.";
+      return;
+    }
+
+    listEl.innerHTML = data
+      .map((p, idx) => `
+        <a class="listing-card lift-on-hover fade-in ${idx === 0 ? "delay-1" : idx === 1 ? "delay-2" : "delay-3"}" href="property.html?id=${p.id}">
+          ${p.cover_photo_url ? `<img src="${p.cover_photo_url}" alt="Foto di ${p.title}" class="listing-cover" />` : ""}
+          <div class="listing-badge-row">
+            <span class="badge">${p.zone || "Roma"}</span>
+            <span class="badge badge-strong">${p.guests || "?"} ospiti</span>
+          </div>
+          <h3>${p.title}</h3>
+          <p>${p.short_description || ""}</p>
+          <ul class="tags">
+            <li>${p.base_price ? p.base_price + " €/notte" : "Prezzo su richiesta"}</li>
+            ${p.check_in_mode ? `<li>${p.check_in_mode}</li>` : ""}
+          </ul>
+          <div class="listing-footer">
+            <span class="rating">Annuncio gestito da B&Brother’s</span>
+            <span class="btn btn-outline-sm">Dettagli</span>
+          </div>
+        </a>
+      `)
+      .join("");
+  }
+
+  loadFeaturedProperties();
+</script>
 </body>
 </html>
