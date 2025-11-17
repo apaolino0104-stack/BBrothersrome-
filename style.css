@@ -69,12 +69,15 @@ delay-3 { animation-delay: 0.28s; }
 }
 
 .tilt-on-hover {
-  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out;
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background 0.18s ease-out;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .tilt-on-hover:hover {
-  animation: tiltFloat 0.9s ease-in-out;
+  transform: translateY(-4px) rotate3d(1, -1, 0, 1.2deg);
   box-shadow: var(--shadow-soft);
+  background: rgba(255, 250, 240, 0.04);
 }
 
 /* Header */

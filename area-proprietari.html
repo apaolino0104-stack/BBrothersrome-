@@ -9,7 +9,7 @@
 <body>
 <header class="site-header">
   <div class="container header-inner fade-in">
-    <a href="index.html" class="logo">
+    <a href="proprietari.html" class="logo">
       <img src="logo-bbrothers.png" alt="Logo B&Brother’s" class="logo-img" />
       <div class="logo-text">
         <span class="logo-title">B&Brother’s</span>
@@ -17,18 +17,14 @@
       </div>
     </a>
     <nav class="main-nav">
-      <a href="index.html" class="nav-link">Home</a>
-        <a href="proprietari.html" class="nav-link">Per i proprietari</a>
-        <a href="ospiti.html" class="nav-link">Per gli ospiti</a>
-        <a href="alloggi.html" class="nav-link">Alloggi</a>
-        <a href="come-lavoriamo.html" class="nav-link">Come lavoriamo</a>
-        <a href="chi-siamo.html" class="nav-link">Chi siamo</a>
-        <a href="faq.html" class="nav-link">FAQ</a>
-        <a href="contatti.html" class="nav-link">Contatti</a>
-        <a href="login.html" class="nav-link nav-link-active">Area proprietari</a>
-        
+      <a href="proprietari.html" class="nav-link">Home proprietari</a>
+      <a href="proprietari.html#come-funziona" class="nav-link">Come funziona</a>
+      <a href="proprietari.html#servizi-proprietari" class="nav-link">Servizi</a>
+      <a href="proprietari.html#commissione" class="nav-link">Commissione</a>
+      <a href="contatti.html" class="nav-link">Contatti</a>
+      <a href="login.html" class="nav-link nav-link-active">🔑 Area proprietari</a>
     </nav>
-    <a href="https://wa.me/393345071226" class="btn btn-whatsapp">WhatsApp</a>
+    <a href="ospiti.html" class="nav-link nav-link-ghost">Vuoi prenotare un soggiorno?</a>
   </div>
 </header>
 
@@ -83,12 +79,61 @@
           <input type="number" id="prop-price" step="0.01" />
         </label>
         <label>
-          Foto di copertina
-          <input type="file" id="prop-cover" accept="image/*" />
+          Foto dell'alloggio (puoi selezionarne più di una)
+          <input type="file" id="prop-photos" accept="image/*" multiple />
+          <span class="small-label">La prima foto caricata diventa la copertina.</span>
         </label>
         <button type="submit" class="btn btn-primary btn-full">Salva struttura (bozza)</button>
       </form>
       <p id="prop-message" class="small-label"></p>
+    </section>
+
+    <hr style="margin: 24px 0;">
+
+    <section id="edit-section" style="display: none;">
+      <h2>Modifica struttura</h2>
+      <p class="small-label">Seleziona una struttura dalla lista sopra per modificarla in ogni dettaglio.</p>
+      <div id="edit-photos" class="gallery-grid" style="margin: 12px 0;"></div>
+      <form id="edit-property-form" class="contact-form">
+        <label>
+          Titolo
+          <input type="text" id="edit-title" required />
+        </label>
+        <label>
+          Zona
+          <input type="text" id="edit-zone" />
+        </label>
+        <label>
+          Descrizione breve
+          <textarea id="edit-short" rows="2"></textarea>
+        </label>
+        <label>
+          Descrizione completa
+          <textarea id="edit-full" rows="4"></textarea>
+        </label>
+        <label>
+          Posti letto
+          <input type="number" id="edit-guests" />
+        </label>
+        <label>
+          Prezzo base (€/notte)
+          <input type="number" id="edit-price" step="0.01" />
+        </label>
+        <label>
+          Stato annuncio
+          <select id="edit-status">
+            <option value="draft">Bozza</option>
+            <option value="published">Pubblicato</option>
+          </select>
+        </label>
+        <label>
+          Carica nuove foto (opzionale)
+          <input type="file" id="edit-photos-input" accept="image/*" multiple />
+          <span class="small-label">La prima nuova foto sovrascrive la copertina.</span>
+        </label>
+        <button type="submit" class="btn btn-primary btn-full">Salva modifiche</button>
+      </form>
+      <p id="edit-message" class="small-label"></p>
     </section>
   </div>
 </section>
@@ -120,6 +165,8 @@
   }
 
   let currentUser = null;
+  let propertiesCache = [];
+  let selectedPropertyId = null;
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
     await supabase.auth.signOut();
@@ -133,6 +180,7 @@
     const { data, error } = await supabase
       .from("properties")
       .select("*")
+      .eq("owner_id", currentUser.id)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -145,17 +193,27 @@
       return;
     }
 
+    propertiesCache = data;
+
     listEl.innerHTML = data
       .map(
         (p) => `
         <article class="listing-card">
           <h3>${p.title}</h3>
           <p>${p.short_description || ""}</p>
+          <p class="small-label">Zona: ${p.zone || "Roma"}</p>
           <p class="small-label">Stato: <strong>${p.status}</strong></p>
+          <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-ghost" data-edit="${p.id}">Modifica</button>
+          </div>
         </article>
       `
       )
       .join("");
+
+    listEl.querySelectorAll("[data-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => selectProperty(btn.dataset.edit));
+    });
   }
 
   async function handleNewProperty(e) {
@@ -169,7 +227,7 @@
     const fullDesc = document.getElementById("prop-full").value;
     const guests = parseInt(document.getElementById("prop-guests").value || "0", 10);
     const price = parseFloat(document.getElementById("prop-price").value || "0");
-    const coverFile = document.getElementById("prop-cover").files[0];
+    const photoFiles = Array.from(document.getElementById("prop-photos").files || []);
 
     const { data: propData, error: propError } = await supabase
       .from("properties")
@@ -191,27 +249,28 @@
       return;
     }
 
-    if (coverFile) {
-      const path = `${currentUser.id}/${propData.id}/${coverFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("property-photos")
-        .upload(path, coverFile);
+    if (photoFiles.length > 0) {
+      let coverUrl = null;
 
-      if (uploadError) {
-        msg.textContent = "Struttura creata, ma errore upload foto: " + uploadError.message;
-      } else {
-        const { data: publicData } = supabase.storage
-          .from("property-photos")
-          .getPublicUrl(path);
-        const coverUrl = publicData.publicUrl;
+      for (let i = 0; i < photoFiles.length; i++) {
+        const file = photoFiles[i];
+        const path = `${currentUser.id}/${propData.id}/${Date.now()}-${i}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("property-photos").upload(path, file);
 
-        await supabase
-          .from("properties")
-          .update({ cover_photo_url: coverUrl })
-          .eq("id", propData.id);
+        if (uploadError) {
+          msg.textContent = "Struttura creata, ma errore upload foto: " + uploadError.message;
+          continue;
+        }
 
-        msg.textContent = "Struttura salvata in bozza con foto.";
+        const { data: publicData } = supabase.storage.from("property-photos").getPublicUrl(path);
+        if (i === 0) coverUrl = publicData.publicUrl;
       }
+
+      if (coverUrl) {
+        await supabase.from("properties").update({ cover_photo_url: coverUrl }).eq("id", propData.id);
+      }
+
+      msg.textContent = "Struttura salvata in bozza con foto.";
     } else {
       msg.textContent = "Struttura salvata in bozza.";
     }
@@ -220,7 +279,161 @@
     loadMyProperties();
   }
 
+  async function selectProperty(propertyId) {
+    selectedPropertyId = propertyId;
+    const editSection = document.getElementById("edit-section");
+    editSection.style.display = "block";
+
+    const property = propertiesCache.find((p) => p.id === propertyId);
+    if (!property) return;
+
+    document.getElementById("edit-title").value = property.title || "";
+    document.getElementById("edit-zone").value = property.zone || "";
+    document.getElementById("edit-short").value = property.short_description || "";
+    document.getElementById("edit-full").value = property.full_description || "";
+    document.getElementById("edit-guests").value = property.guests || "";
+    document.getElementById("edit-price").value = property.base_price || "";
+    document.getElementById("edit-status").value = property.status || "draft";
+
+    loadExistingPhotos(property);
+  }
+
+  async function loadExistingPhotos(property) {
+    const gallery = document.getElementById("edit-photos");
+    gallery.innerHTML = "<p class=\"small-label\">Caricamento foto...</p>";
+    const folderPath = `${property.owner_id}/${property.id}`;
+
+    const { data, error } = await supabase.storage.from("property-photos").list(folderPath);
+    if (error) {
+      gallery.innerHTML = "<p>Errore nel recupero delle foto.</p>";
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      gallery.innerHTML = "<p class=\"small-label\">Nessuna foto caricata.</p>";
+      return;
+    }
+
+    gallery.innerHTML = data
+      .map((file) => {
+        const path = `${folderPath}/${file.name}`;
+        const { data: publicData } = supabase.storage.from("property-photos").getPublicUrl(path);
+        const isCover = property.cover_photo_url && property.cover_photo_url.includes(file.name);
+        return `
+          <figure class="property-photo">
+            <img src="${publicData.publicUrl}" alt="Foto esistente" loading="lazy" />
+            <figcaption>
+              ${isCover ? "<strong>Copertina</strong> · " : ""}${file.name}<br>
+              <button class="btn btn-ghost" data-delete="${file.name}" style="margin-top: 6px;">Elimina</button>
+            </figcaption>
+          </figure>
+        `;
+      })
+      .join("");
+
+    gallery.querySelectorAll("[data-delete]").forEach((btn) => {
+      btn.addEventListener("click", () => deletePhoto(property, btn.dataset.delete));
+    });
+  }
+
+  async function deletePhoto(property, fileName) {
+    const folderPath = `${property.owner_id}/${property.id}`;
+    const fullPath = `${folderPath}/${fileName}`;
+    const { error } = await supabase.storage.from("property-photos").remove([fullPath]);
+    if (error) {
+      alert("Errore nell'eliminazione: " + error.message);
+      return;
+    }
+
+    if (property.cover_photo_url && property.cover_photo_url.includes(fileName)) {
+      const { data } = await supabase.storage.from("property-photos").list(folderPath);
+      if (data && data.length > 0) {
+        const nextPath = `${folderPath}/${data[0].name}`;
+        const { data: publicData } = supabase.storage.from("property-photos").getPublicUrl(nextPath);
+        await supabase.from("properties").update({ cover_photo_url: publicData.publicUrl }).eq("id", property.id);
+        property.cover_photo_url = publicData.publicUrl;
+      } else {
+        await supabase.from("properties").update({ cover_photo_url: null }).eq("id", property.id);
+        property.cover_photo_url = null;
+      }
+    }
+
+    loadExistingPhotos(property);
+  }
+
+  async function handleEditSubmit(e) {
+    e.preventDefault();
+    if (!selectedPropertyId) return;
+    const msg = document.getElementById("edit-message");
+    msg.textContent = "Aggiornamento in corso...";
+
+    const title = document.getElementById("edit-title").value;
+    const zone = document.getElementById("edit-zone").value;
+    const shortDesc = document.getElementById("edit-short").value;
+    const fullDesc = document.getElementById("edit-full").value;
+    const guests = parseInt(document.getElementById("edit-guests").value || "0", 10);
+    const price = parseFloat(document.getElementById("edit-price").value || "0");
+    const status = document.getElementById("edit-status").value;
+    const newPhotos = Array.from(document.getElementById("edit-photos-input").files || []);
+
+    const { error: updateError } = await supabase
+      .from("properties")
+      .update({
+        title,
+        zone,
+        short_description: shortDesc,
+        full_description: fullDesc,
+        guests,
+        base_price: price,
+        status,
+      })
+      .eq("id", selectedPropertyId);
+
+    if (updateError) {
+      msg.textContent = "Errore durante il salvataggio: " + updateError.message;
+      return;
+    }
+
+    if (newPhotos.length > 0) {
+      let coverUrl = null;
+      for (let i = 0; i < newPhotos.length; i++) {
+        const file = newPhotos[i];
+        const path = `${currentUser.id}/${selectedPropertyId}/${Date.now()}-${i}-${file.name}`;
+        const { error: uploadError } = await supabase.storage.from("property-photos").upload(path, file);
+        if (uploadError) {
+          msg.textContent = "Modifica salvata ma errore foto: " + uploadError.message;
+          continue;
+        }
+        const { data: publicData } = supabase.storage.from("property-photos").getPublicUrl(path);
+        if (i === 0) coverUrl = publicData.publicUrl;
+      }
+
+      if (coverUrl) {
+        await supabase.from("properties").update({ cover_photo_url: coverUrl }).eq("id", selectedPropertyId);
+        const cached = propertiesCache.find((p) => p.id === selectedPropertyId);
+        if (cached) cached.cover_photo_url = coverUrl;
+      }
+    }
+
+    msg.textContent = "Annuncio aggiornato.";
+    document.getElementById("edit-photos-input").value = "";
+    await loadMyProperties();
+
+    const updated = propertiesCache.find((p) => p.id === selectedPropertyId);
+    if (updated) {
+      document.getElementById("edit-title").value = updated.title || "";
+      document.getElementById("edit-zone").value = updated.zone || "";
+      document.getElementById("edit-short").value = updated.short_description || "";
+      document.getElementById("edit-full").value = updated.full_description || "";
+      document.getElementById("edit-guests").value = updated.guests || "";
+      document.getElementById("edit-price").value = updated.base_price || "";
+      document.getElementById("edit-status").value = updated.status || "draft";
+      loadExistingPhotos(updated);
+    }
+  }
+
   document.getElementById("new-property-form").addEventListener("submit", handleNewProperty);
+  document.getElementById("edit-property-form").addEventListener("submit", handleEditSubmit);
 
   (async () => {
     currentUser = await getCurrentUser();
