@@ -102,6 +102,8 @@
   }
 
   let currentUser = null;
+  let propertiesCache = [];
+  let selectedPropertyId = null;
 
   document.getElementById("btn-logout").addEventListener("click", async () => {
     await supabase.auth.signOut();
