@@ -97,6 +97,7 @@ delay-3 { animation-delay: 0.28s; }
   justify-content: space-between;
   padding: 10px 0;
   gap: 12px;
+  position: relative;
 }
 
 .logo {
@@ -132,6 +133,61 @@ delay-3 { animation-delay: 0.28s; }
   gap: 18px;
   font-size: 14px;
   align-items: center;
+}
+
+.nav-toggle {
+  display: none;
+}
+
+.menu-toggle {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  color: #f8f3ea;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 0.18s ease-out;
+}
+
+.menu-toggle:hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.menu-toggle-box {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menu-toggle-line {
+  width: 20px;
+  height: 2px;
+  background: #f8f3ea;
+  border-radius: 999px;
+  display: block;
+}
+
+.menu-toggle-text {
+  display: inline-flex;
+  align-items: center;
+}
+
+@media (min-width: 840px) {
+  .main-nav {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .menu-toggle {
+    display: none;
+  }
 }
 
 .nav-link {
@@ -192,6 +248,19 @@ delay-3 { animation-delay: 0.28s; }
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 18px 40px rgba(72,52,24,0.55);
+}
+
+.btn-accent {
+  background: #fdfaf2;
+  color: #3c2e1d;
+  border-color: rgba(201,147,52,0.85);
+  box-shadow: 0 14px 32px rgba(255,210,136,0.3);
+}
+
+.btn-accent:hover {
+  transform: translateY(-1px);
+  background: #fff9eb;
+  box-shadow: 0 18px 40px rgba(255,210,136,0.4);
 }
 
 .btn-ghost {
@@ -983,11 +1052,32 @@ delay-3 { animation-delay: 0.28s; }
 }
 
 /* Responsive */
-@media (min-width: 840px) {
-  .main-nav { display: flex; }
-}
-
 @media (max-width: 839px) {
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  .main-nav {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 13px;
+    padding: 14px 16px;
+    background: rgba(16, 15, 20, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.38);
+    border-radius: 12px;
+    z-index: 5;
+  }
+
+  .nav-toggle:checked ~ .main-nav { display: flex; }
+  .nav-toggle:not(:checked) ~ .main-nav { display: none; }
+
   .hero-inner {
     grid-template-columns: minmax(0, 1fr);
   }
